@@ -76,14 +76,12 @@ AZURE_OPENAI_CONFIG = {
 SYSTEM_PROMPTS = {
     "summarization": """You are an expert document analyzer. Your task is to:
 1. Provide a comprehensive summarization covering all necessary contents
-2. Create a brief description with 2-3 bullet points highlighting key aspects
+2. Include a brief description with 2-3 bullet points within the summary
 3. Extract file metadata including file_type, version, and relevant tags/keywords
 
 Format your response as JSON:
 {
-    "summary": "detailed summary here",
-    "description": "brief description",
-    "bullet_points": ["point 1", "point 2", "point 3"],
+    "summary": "detailed summary here including brief description and bullet points formatted as:\n\nKey Points:\n• Point 1\n• Point 2\n• Point 3",
     "file_type": "detected file type",
     "version": "version if available or 'N/A'",
     "tags": ["keyword1", "keyword2", "keyword3"]
@@ -112,8 +110,7 @@ DUPLICATE_THRESHOLD = 0.85
 # Excel output settings
 EXCEL_COLUMNS = [
     'file_name', 'file_type', 'extracted_text', 'summary', 
-    'description', 'bullet_points', 'version', 'tags', 
-    'duplicates', 'duplicates_percentage', 'master_one'
+    'version', 'tags', 'duplicates', 'duplicates_percentage', 'master_one'
 ]
 
 # ============================================================================
@@ -319,15 +316,11 @@ class LLMAnalyzer:
         """Validate and clean analysis result"""
         validated = {
             "summary": result.get("summary", "No summary available"),
-            "description": result.get("description", "No description available"),
-            "bullet_points": result.get("bullet_points", []),
             "file_type": result.get("file_type", "Unknown"),
             "version": result.get("version", "N/A"),
             "tags": result.get("tags", [])
         }
         
-        if isinstance(validated["bullet_points"], str):
-            validated["bullet_points"] = [validated["bullet_points"]]
         if isinstance(validated["tags"], str):
             validated["tags"] = [validated["tags"]]
             
@@ -336,9 +329,7 @@ class LLMAnalyzer:
     def _create_fallback_result(self, text: str, file_name: str) -> Dict[str, Any]:
         """Create fallback result when LLM analysis fails"""
         return {
-            "summary": f"Text extraction completed for {file_name}. LLM analysis failed.",
-            "description": "Document processed but detailed analysis unavailable",
-            "bullet_points": ["Text successfully extracted", "Analysis requires manual review"],
+            "summary": f"Text extraction completed for {file_name}. LLM analysis failed.\n\nKey Points:\n• Text successfully extracted\n• Analysis requires manual review",
             "file_type": "Unknown",
             "version": "N/A",
             "tags": ["unprocessed"]
@@ -540,11 +531,11 @@ class ExcelExporter:
             cell.fill = header_fill
             cell.alignment = header_alignment
         
-        # Column widths
-        column_widths = {
-            'A': 25, 'B': 15, 'C': 50, 'D': 50, 'E': 30, 'F': 30,
-            'G': 12, 'H': 25, 'I': 30, 'J': 15, 'K': 25
-        }
+                 # Column widths
+         column_widths = {
+             'A': 25, 'B': 15, 'C': 50, 'D': 60, 'E': 12, 'F': 25,
+             'G': 30, 'H': 15, 'I': 25
+         }
         
         for col, width in column_widths.items():
             worksheet.column_dimensions[col].width = width
@@ -576,10 +567,6 @@ class ExcelExporter:
     
     def prepare_row_data(self, file_info: Dict[str, Any]) -> Dict[str, Any]:
         """Prepare row data for Excel export"""
-        bullet_points = file_info.get('bullet_points', [])
-        if isinstance(bullet_points, list):
-            bullet_points = '\n'.join([f"• {point}" for point in bullet_points])
-        
         tags = file_info.get('tags', [])
         if isinstance(tags, list):
             tags = ', '.join(tags)
@@ -593,8 +580,6 @@ class ExcelExporter:
             'file_type': file_info.get('file_type', ''),
             'extracted_text': extracted_text,
             'summary': file_info.get('summary', ''),
-            'description': file_info.get('description', ''),
-            'bullet_points': bullet_points,
             'version': file_info.get('version', 'N/A'),
             'tags': tags,
             'duplicates': file_info.get('duplicate_reason', 'No duplicates found'),
@@ -802,9 +787,7 @@ class DocumentProcessor:
             'file_path': file_path,
             'file_type': file_type,
             'extracted_text': '',
-            'summary': 'Failed to process document',
-            'description': 'Error occurred during processing',
-            'bullet_points': ['Processing failed'],
+            'summary': 'Failed to process document. Error occurred during processing.\n\nKey Points:\n• Processing failed\n• Manual review required',
             'version': 'N/A',
             'tags': ['error'],
             'similarity_percentage': 0.0,
@@ -815,9 +798,7 @@ class DocumentProcessor:
     def _create_empty_analysis(self, file_name: str) -> Dict[str, Any]:
         """Create empty analysis for failed LLM processing"""
         return {
-            'summary': f'Failed to analyze {file_name}',
-            'description': 'LLM analysis failed',
-            'bullet_points': ['Analysis failed'],
+            'summary': f'Failed to analyze {file_name}. LLM analysis failed.\n\nKey Points:\n• Analysis failed\n• Manual review required',
             'file_type': 'Unknown',
             'version': 'N/A',
             'tags': ['analysis_failed']
@@ -923,8 +904,8 @@ Include statistics:
 - Outlook Messages (.msg)
 - Text files (.txt)
 
-📋 EXCEL OUTPUT COLUMNS:
-file_name | file_type | extracted_text | summary | description | bullet_points | version | tags | duplicates | duplicates_percentage | master_one
+ 📋 EXCEL OUTPUT COLUMNS:
+ file_name | file_type | extracted_text | summary | version | tags | duplicates | duplicates_percentage | master_one
 
 🎯 FEATURES:
 ✅ Multi-format text extraction
