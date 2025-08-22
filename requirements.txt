@@ -1,0 +1,10 @@
+azure-openai
+openai>=1.2.0
+pandas
+python-docx
+python-pptx
+pdfplumber
+extract-msg
+sentence-transformers
+scikit-learn
+python-dotenv
